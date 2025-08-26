@@ -115,6 +115,7 @@ public class HttpServer {
        run(args);
     }
 
+    @SuppressWarnings("empty-statement")
     public static void handleDynamicRequest(Socket clientSocket, HttpRequest request) throws IOException, IllegalAccessException, InvocationTargetException {
         HttpResponse response = new HttpResponse();
         URI requestUri = request.getUri();
@@ -122,12 +123,11 @@ public class HttpServer {
         Method handler = services.get(requestUri.getPath());
         if (handler != null) {
             Parameter param = parameters.get(requestUri.getPath());
-            String[] params = new String[1];
+            String[] params = null;
             if(param != null){
-                String paramName = param.getAnnotation(RequestParam.class).value();
-                System.out.println(paramName);
-                String value = request.getValues(paramName);
-                params[0] = value;
+                RequestParam values = param.getAnnotation(RequestParam.class);
+                String value = request.getValues(values.value());
+                params = new String[]{value};
             }
             
             Object body = handler.invoke(null, params);
