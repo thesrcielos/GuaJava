@@ -9,5 +9,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequestParam {
     public String value();
-    public String defaultValue() default "";
+    String DEFAULT_NONE = "\t\t\t\t\t\t \n \n \t";
+    public String defaultValue() default DEFAULT_NONE;
 }

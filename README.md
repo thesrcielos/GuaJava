@@ -1,5 +1,9 @@
 # Java Microframework
-This is a basic Web Java Framework implementation in Java using ServerSocket.
+Este proyecto es un microframework web educativo en Java, inspirado en Spring Boot.
+Permite crear aplicaciones web utilizando anotaciones como @RestController, @GetMapping y @RequestParam para definir controladores y manejar rutas HTTP de forma sencilla.
+
+El framework incluye un escáner automático de clases que recorre el classpath y registra los componentes anotados, evitando configuraciones manuales.
+También implementa la conversión de parámetros de consulta a distintos tipos de datos (enteros, flotantes, booleanos y cadenas.), facilitando el desarrollo de controladores más expresivos.
 
 ## Getting Started
 These instructions will help you get a copy of the project running on your local machine for development and testing purposes.
@@ -13,8 +17,8 @@ You will need the following installed:
 ### Installing
 Clone the repository:
 ```bash
-git clone https://github.com/thesrcielos/JavaMicroframework
-cd JavaMicroframework
+git clone https://github.com/thesrcielos/GuaJava
+cd GuaJava
 ```
 
 Build the project using Maven:
@@ -27,68 +31,77 @@ mvn clean install
 #### HTTP Server
 Start the HTTP server on port 35000:
 ```bash
-java -cp target/HttpServer-1.0-SNAPSHOT.jar org.eci.arep.Main
+java -cp target/classes org.eci.arep.Main
 ```
 
 The server will be available at `http://localhost:35000`
 
+## Anotaciones del Microframework
+
+El framework utiliza un sistema de anotaciones propio para simplificar la definición de controladores y el manejo de peticiones HTTP:
+
+- **`@RestController`**  
+  Marca una clase como un controlador que puede manejar peticiones HTTP.  
+  Todas las rutas definidas en esta clase estarán disponibles automáticamente.
+
+- **`@GetMapping("path")`**  
+  Asocia un método del controlador con una ruta específica para manejar solicitudes **GET**.  
+  **Ejemplo:**
+
+```java
+  @RestController
+  public class HomeController {
+  
+      @GetMapping("/hello")
+      public static String hello(@RequestParam(value = "name", defaultValue = "world") String name) {
+          return "Greeting from microframework to " + name;
+      }
+  }
+```
+- **`@RequestParam("name")`**
+Permite enlazar parámetros de la query string (?name=...) con los parámetros del método en el controlador.
+Además soporta valores por defecto:
+```java
+    @GetMapping("/sum")
+    public static String sum(
+        @RequestParam(value = "a", defaultValue = "0") int a,
+        @RequestParam(value = "b", defaultValue = "0") int b
+    ) {
+    return "Suma = " + (a + b);
+    }
+```
+
+## Component Scanner
+
+El framework incluye un escáner de componentes que busca automáticamente todas las clases dentro del classpath anotadas con @RestController.
+De esta forma no es necesario registrar manualmente los controladores:
+
+```java
+public static void loadComponents(String[] args) {
+    try {
+        List<Class<?>> classes = ComponentScanner.scanForControllers("org.eci.arep");
+        for (Class<?> cl : classes) {
+            loadComponent(cl);
+        }
+    } catch (ClassNotFoundException | IOException ex) {
+        ex.printStackTrace();
+    }
+}
+```
+
+### ¿Qué hace el *ComponentScanner*?
+* Recorre el directorio raíz del proyecto (src/main/java).
+* Identifica todas las clases anotadas con @RestController.
+* Registra sus métodos anotados con @GetMapping en un mapa interno (services).
+* Permite que, al llegar una petición HTTP, el framework encuentre y ejecute el método correspondiente de forma dinámica.
+
 #### Usage and response Example of Microframework
 
-Code example
-````
-public static void main(String[] args) throws IOException, URISyntaxException {
-        staticfiles("public");
-        get("/hello", (req, resp) -> "Hello " + req.getValues("name"));
-        get("/pi", (req, resp) -> {
-            return String.valueOf(Math.PI);
-        });
-        get("/app/hello", (req, res) -> "Hello");
-        HttpServer.run();
-    }
-````
-Go to postman and type localhost:35000/hello?name=<your-name>
+Go to the browser and type http://localhost:35000/hello?name=your-name
 ![](/assets/img1.png)
-Now check the Pi endpoint
+Now try the /users endpoint http://localhost:35000/users?name=your-name&height=1.67
 ![](/assets/img2.png)
 
-
-## Features
-- **HTTP Server**: Complete HTTP/1.1 server implementation supporting GET and POST methods
-- **GET Method HTTP**: A simple way to create a get endpoint of HTTP
-- **Static File Serving**: Serves HTML, CSS, JS, and image files from the directory you specify
-
-## Diseño de la clase HttpServer
-
-La clase HttpServer implementa un servidor web ligero utilizando la librería estándar de Java, específicamente el paquete java.net.ServerSocket. El objetivo de esta clase es brindar una infraestructura básica para:
-Servir archivos estáticos desde un directorio definido por el usuario.
-Atender solicitudes dinámicas mediante funciones registradas en tiempo de ejecución.
-Proporcionar un mecanismo extensible para la construcción de aplicaciones web simples sin necesidad de frameworks adicionales.
-
-### Responsabilidades de la clase
-
-La clase HttpServer asume las siguientes responsabilidades:
-Gestión de conexiones: escuchar en un puerto determinado (35000) y aceptar clientes entrantes.
-Procesamiento de solicitudes HTTP: parsear la línea de petición (método, URI y versión HTTP) así como las cabeceras asociadas.
-Resolución de recursos:
-Buscar archivos estáticos en el directorio raíz definido.
-Delegar en controladores dinámicos si no se encuentra un archivo.
-Generación de respuestas: construir objetos HttpResponse con código de estado, cabeceras y cuerpo.
-Extensibilidad: permitir el registro de servicios dinámicos asociados a rutas específicas.
-
-### Métodos de configuración
-
-get(String path, HttpService service)
-Registra un servicio dinámico que será invocado cuando el servidor reciba una solicitud a la ruta especificada.
-
-staticfiles(String path)
-Establece el directorio raíz de archivos estáticos.
-
-### Métodos de ejecución
-run()
-Inicia el servidor en el puerto 35000, acepta conexiones y procesa las solicitudes entrantes en un ciclo indefinido.
-
-main(String[] args)
-Método de entrada que invoca la ejecución del servidor.
 
 ## Usage Examples
 
@@ -112,30 +125,27 @@ Unit tests are written using JUnit and ensure the logic in **HttpServer** works 
 Some of the things that are being tested are:
 * Http Server serves static files
 * Http Response structure 
-* Http Server API Endpoints
+* Http Server GET API Endpoints
 
 Example:
 This test is testing that the required parameters are valid
 
 ```
 @Test
-    void testHandleDynamicRequest_Found() throws Exception {
-        HttpServer.get("/hello", (req, resp) -> "Hello " + req.getValues("name"));
+    public void testTempEndpoint_withParam() throws Exception {
+        HttpRequest request = mock(HttpRequest.class);
+        when(request.getUri()).thenReturn(new URI("/temp"));
+        when(request.getValues("msg")).thenReturn("Hola");
 
-        HttpRequest request = new HttpRequest();
-        request.setUri(new URI("/hello?name=Diego"));
+        Socket socket = mock(Socket.class);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        when(socket.getOutputStream()).thenReturn(baos);
+        
+        HttpServer.handleDynamicRequest(socket, request);
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        Socket mockSocket = mock(Socket.class);
-        when(mockSocket.getOutputStream()).thenReturn(outputStream);
-
-        HttpServer.handleDynamicRequest(mockSocket, request);
-
-        String response = outputStream.toString();
-        assertTrue(response.contains("200 OK"));
-        assertTrue(response.contains("Hello Diego"));
-
-        verify(mockSocket, times(1)).getOutputStream();
+        String responseText = baos.toString();
+        
+        assertTrue(responseText.contains("Temp says: Hola"));
     }
 ```
 

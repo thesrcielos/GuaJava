@@ -4,37 +4,16 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.*;
 import java.io.*;
+import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.*;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class HttpServerTest {
-/**
-    @TempDir
-    Path tempDir;
-    
-    private static final int TEST_PORT = 35001;
-    @Test
-    void testHandleDynamicRequest_Found() throws Exception {
-        HttpServer.get("/hello", (req, resp) -> "Hello " + req.getValues("name"));
-
-        HttpRequest request = new HttpRequest();
-        request.setUri(new URI("/hello?name=Diego"));
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        Socket mockSocket = mock(Socket.class);
-        when(mockSocket.getOutputStream()).thenReturn(outputStream);
-
-        HttpServer.handleDynamicRequest(mockSocket, request);
-
-        String response = outputStream.toString();
-        assertTrue(response.contains("200 OK"));
-        assertTrue(response.contains("Hello Diego"));
-
-        verify(mockSocket, times(1)).getOutputStream();
-    }
 
     @Test
     void testHandleDynamicRequest_NotFound() throws Exception {
@@ -139,5 +118,5 @@ public class HttpServerTest {
         assertTrue(response.contains("Hello Static"));
 
         verify(mockSocket, times(1)).getOutputStream();
-    }*/
+    }
 }

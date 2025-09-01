@@ -2,47 +2,55 @@ package org.eci.arep;
 
 import java.net.*;
 import java.nio.file.*;
-import java.util.HashMap;
-import java.util.Locale;
+import java.util.*;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class HttpServer {
     private static final Map<String, Method> services = new HashMap<>();
-    private static final Map<String, Parameter> parameters = new HashMap<>();
+    private static final Map<String, List<Parameter>> parameters = new HashMap<>();
     
     private static String WEB_ROOT_DIR = "src/main/resources/public";
 
     public static void loadComponents(String[] args){
-        System.out.println(args[0]);
-        try{
-            Class c = Class.forName(args[0]);
-            if(c.isAnnotationPresent(RestController.class)){
-                Method[] methods = c.getDeclaredMethods();
-                for(Method m : methods){
-                    if(m.isAnnotationPresent(GetMapping.class)){
-                        String mapping = m.getAnnotation(GetMapping.class).value();
-                        services.put(mapping, m);
-                        Parameter[] params = m.getParameters();
-                        for(Parameter p : params){
-                            if(p.isAnnotationPresent(RequestParam.class)){
-                                System.out.println(p);
-                                parameters.put(mapping, p);
-                            }
-                        }
-                    }
-                }
+        try {
+            List<Class<?>> classes = ComponentScanner.scanForControllers("org.eci.arep");
+            for (Class<?> cl : classes){
+                loadComponent(cl);
             }
-        } catch(ClassNotFoundException ex){
+        } catch (ClassNotFoundException | IOException ex) {
             Logger.getLogger(HttpServer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
+    private static void loadComponent(Class<?> c){
+        if(!c.isAnnotationPresent(RestController.class)) {
+            return;
+        }
+        Method[] methods = c.getDeclaredMethods();
+        for(Method m : methods){
+            if(!m.isAnnotationPresent(GetMapping.class)){
+                continue;
+            }
+            String mapping = m.getAnnotation(GetMapping.class).value();
+            System.out.println(mapping);
+            services.put(mapping, m);
+            checkMethodParameters(m, mapping);
+        }
+    }
+
+    private static void checkMethodParameters(Method method, String mapping){
+        Parameter[] params = method.getParameters();
+        for(Parameter p : params){
+            if(p.isAnnotationPresent(RequestParam.class)){
+                parameters.computeIfAbsent(mapping, l -> new ArrayList<>()).add(p);
+            }
+        }
+    }
     public static void get(String path, Method service){
         services.put(path, service);
     }
@@ -115,21 +123,13 @@ public class HttpServer {
        run(args);
     }
 
-    @SuppressWarnings("empty-statement")
     public static void handleDynamicRequest(Socket clientSocket, HttpRequest request) throws IOException, IllegalAccessException, InvocationTargetException {
         HttpResponse response = new HttpResponse();
         URI requestUri = request.getUri();
 
         Method handler = services.get(requestUri.getPath());
         if (handler != null) {
-            Parameter param = parameters.get(requestUri.getPath());
-            String[] params = null;
-            if(param != null){
-                RequestParam values = param.getAnnotation(RequestParam.class);
-                String value = request.getValues(values.value());
-                params = new String[]{value};
-            }
-            
+            Object[] params = getRequestParamsValues(request);
             Object body = handler.invoke(null, params);
             response.setBody(body.toString());
         } else {
@@ -142,6 +142,31 @@ public class HttpServer {
     }
 
 
+    public static Object[] getRequestParamsValues(HttpRequest request){
+        List<Parameter> parameterList = parameters.get(request.getUri().getPath());
+        Object[] params = new Object[parameterList.size()];
+
+        for(int i = 0; i < parameterList.size(); i++) {
+            Parameter param = parameterList.get(i);
+            if (param == null) {
+                continue;
+            }
+
+            RequestParam values = param.getAnnotation(RequestParam.class);
+            String rawValue = request.getValues(values.value());
+            if (rawValue == null || rawValue.isEmpty()){
+                if (!values.defaultValue().equals(RequestParam.DEFAULT_NONE)) {
+                    rawValue = values.defaultValue();
+                }
+            }
+
+            Class<?> type = param.getType();
+            Object convertedValue = convertValue(rawValue, type);
+            params[i] = convertedValue;
+        }
+
+        return params;
+    }
     public static void handleHttpRequest(HttpRequest request, PrintWriter out, Socket clientSocket) throws IOException, InvocationTargetException, IllegalAccessException {
         URI requestUri = request.getUri();
         if(requestUri != null){
@@ -162,6 +187,26 @@ public class HttpServer {
                 handleDynamicRequest(clientSocket, request);
             }
         }
+    }
+
+    private static Object convertValue(String value, Class<?> type) {
+        if (value == null) return null;
+
+        if (type.equals(String.class)) {
+            return value;
+        } else if (type.equals(int.class) || type.equals(Integer.class)) {
+            return Integer.parseInt(value);
+        } else if (type.equals(long.class) || type.equals(Long.class)) {
+            return Long.parseLong(value);
+        } else if (type.equals(double.class) || type.equals(Double.class)) {
+            return Double.parseDouble(value);
+        } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+            return Boolean.parseBoolean(value);
+        } else if (type.isEnum()) {
+            return Enum.valueOf((Class<Enum>) type, value.toUpperCase());
+        }
+
+        return value;
     }
 
     public static String getContentType(Path p) {
