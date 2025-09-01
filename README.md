@@ -35,18 +35,17 @@ java -cp target/classes org.eci.arep.Main
 ```
 
 The server will be available at `http://localhost:35000`
+## Microframework Annotations
 
-## Anotaciones del Microframework
-
-El framework utiliza un sistema de anotaciones propio para simplificar la definición de controladores y el manejo de peticiones HTTP:
+The framework uses its own annotation system to simplify controller definition and HTTP request handling:
 
 - **`@RestController`**  
-  Marca una clase como un controlador que puede manejar peticiones HTTP.  
-  Todas las rutas definidas en esta clase estarán disponibles automáticamente.
+  Marks a class as a controller that can handle HTTP requests.  
+  All routes defined in this class will be automatically available.
 
 - **`@GetMapping("path")`**  
-  Asocia un método del controlador con una ruta específica para manejar solicitudes **GET**.  
-  **Ejemplo:**
+  Associates a controller method with a specific route to handle **GET** requests.  
+  **Example:**
 
 ```java
   @RestController
@@ -59,22 +58,22 @@ El framework utiliza un sistema de anotaciones propio para simplificar la defini
   }
 ```
 - **`@RequestParam("name")`**
-Permite enlazar parámetros de la query string (?name=...) con los parámetros del método en el controlador.
-Además soporta valores por defecto:
+  Allows binding query string parameters (?name=...) with controller method parameters.
+  It also supports default values:
 ```java
     @GetMapping("/sum")
     public static String sum(
         @RequestParam(value = "a", defaultValue = "0") int a,
         @RequestParam(value = "b", defaultValue = "0") int b
     ) {
-    return "Suma = " + (a + b);
+    return "Sum = " + (a + b);
     }
 ```
 
 ## Component Scanner
 
-El framework incluye un escáner de componentes que busca automáticamente todas las clases dentro del classpath anotadas con @RestController.
-De esta forma no es necesario registrar manualmente los controladores:
+The framework includes a component scanner that automatically searches for all classes within the classpath annotated with @RestController.
+This way, it's not necessary to manually register controllers:
 
 ```java
 public static void loadComponents(String[] args) {
@@ -89,12 +88,11 @@ public static void loadComponents(String[] args) {
 }
 ```
 
-### ¿Qué hace el *ComponentScanner*?
-* Recorre el directorio raíz del proyecto (src/main/java).
-* Identifica todas las clases anotadas con @RestController.
-* Registra sus métodos anotados con @GetMapping en un mapa interno (services).
-* Permite que, al llegar una petición HTTP, el framework encuentre y ejecute el método correspondiente de forma dinámica.
-
+### What does the *ComponentScanner* do?
+* Traverses the project's root directory (src/main/java).
+* Identifies all classes annotated with @RestController.
+* Registers their methods annotated with @GetMapping in an internal map (services).
+* Allows the framework to find and execute the corresponding method dynamically when an HTTP request arrives.
 #### Usage and response Example of Microframework
 
 Go to the browser and type http://localhost:35000/hello?name=your-name
