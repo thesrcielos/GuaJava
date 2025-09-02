@@ -44,7 +44,7 @@ The framework uses its own annotation system to simplify controller definition a
   All routes defined in this class will be automatically available.
 
 - **`@GetMapping("path")`**  
-  Associates a controller method with a specific route to handle **GET** requests.  
+  Associates a controller method with a specific route to handle **GET** requests. This annotation only works in static methods.  
   **Example:**
 
 ```java
